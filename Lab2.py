@@ -5,15 +5,14 @@
 import streamlit as st
 from openai import OpenAI
 
-###
-# ----------------- INSERTED SIDEBAR (VISUAL ONLY) -----------------EXAMPLE STARTS/PLEASE DELETE
-#st.sidebar.header("Controls & Info")
-#st.sidebar.caption("Visual prototype only — does not affect execution.")
-#st.sidebar.radio("View Mode", ["Standard", "Detailed Analysis", "Debug"])
-#st.sidebar.selectbox("Filter Category", ["All Sections", "Executive Summary", "Key Points"])
-#st.sidebar.checkbox("Highlight Citations", value=True)
-#st.sidebar.slider("Chunk Window Size", min_value=100, max_value=1000, value=500, step=50)
-#st.sidebar.button("Clear Cache")
+#----------------- INSERTED SIDEBAR (VISUAL ONLY) -----------------EXAMPLE STARTS/PLEASE DELETE
+st.sidebar.header("Controls & Info")
+st.sidebar.caption("Visual prototype only — does not affect execution.")
+st.sidebar.radio("View Mode", ["Standard", "Detailed Analysis", "Debug"])
+st.sidebar.selectbox("Filter Category", ["All Sections", "Executive Summary", "Key Points"])
+st.sidebar.checkbox("Highlight Citations", value=True)
+st.sidebar.slider("Chunk Window Size", min_value=100, max_value=1000, value=500, step=50)
+st.sidebar.button("Clear Cache")
 # -------------------------------------------------------------------EXAMPLE ENDS/PLEASE DELETE
 
 with st.sidebar:
