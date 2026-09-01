@@ -6,7 +6,7 @@ import streamlit as st
 from openai import OpenAI
 
 # Show title and description.
-st.title(":rainbow[Lab 2:] :blue[Deep] Scan Protocol")  #Updated title
+st.title(":grey[Lab 2:] :blue[Deep] Scan Protocol")  #Updated title
 
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
