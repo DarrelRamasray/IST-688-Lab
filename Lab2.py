@@ -7,17 +7,38 @@ from openai import OpenAI
 
 st.sidebar.header("**Settings:**")
 st.sidebar.caption("Configure Output Format & AI Model")
-st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"])
-st.sidebar.selectbox("**Select Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"])
-st.sidebar.checkbox("Use Advanced Model", value=False)
-st.sidebar.button("Clear Cache")
+
+#Summary Type
+summary_type = st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"],
+    index=None,
+    placeholder="Choose a format",
+)  #Stored
+
+#Model Selection
+base_model = st.sidebar.selectbox("**Select Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1",],
+    index=None,
+    placeholder="Choose a model",
+)  #Stored
+
+use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)  #When checked the advanced model is used instead
+advanced_model = "gpt-4.1"
+selected_model = advanced_model if use_advanced else base_model  #Model selection sent to the API
+
+if st.sidebar.button("Clear Cache"):  #Clears the cached key validation
+    st.cache_data.clear()
+
+generate = st.sidebar.button("Generate Summary", type="primary")  #Nothing is sent to the API until this is clicked
+inputs_ready = bool(summary_type) and bool(selected_model)  #A format is always required, and a model must come from the dropdown or the checkbox
 
 # Show title and description.
 st.title(":blue[Lab 2:] :grey[Deep] Scan Protocol")  #Updated title
 
 st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
+    "Upload a document below, then select summary format and model. "
 )
+
+if generate and not inputs_ready:  #Error shown when either sidebar selection is missing
+    st.error("Error! Please choose a summary format and a model (or check Use Advanced Model) before generating.")
 
 @st.cache_data  #Caches result
 def is_valid_key(key: str) -> bool:  #Validation function
@@ -27,11 +48,13 @@ def is_valid_key(key: str) -> bool:  #Validation function
     except Exception:
         return False
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")  #Key read from .streamlit/secrets.toml (or App settings > Secrets)
+
+summary_instructions = {
+    "100-Word Summary": "Summarize the document in about 100 words.",
+    "2 Paragraph Summary": "Summarize the document in 2 connecting paragraphs.",
+    "5-Bullet Summary": "Summarize the document in 5 bullet points.",
+}  #Maps selection to the instruction sent to the LLM
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
@@ -48,33 +71,17 @@ else:
         "Upload a document (.txt or .md)", type=("txt", "md")
     )
 
-    # Ask the user for a question via `st.text_area`.
-    question = st.text_area(
-        "Now ask a question about the document!",
-        placeholder="Can you give me a short summary?",
-        disabled=not uploaded_file,
-    )
-
-    if uploaded_file and question:
-
+    if uploaded_file and generate and inputs_ready:  #Runs once selections are made
         # Process the uploaded file and question.
         document = uploaded_file.read().decode()
         messages = [
             {
                 "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {question}",
+                "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]}", #Summary format is now the instruction
             }
         ]
 
-        ###model_options = ["gpt-3.5-turbo", "gpt-4o-mini","gpt-4.1", "gpt-5-nano"]  #Available models ##################################################
-
-        selected_model = st.selectbox("Model",
-            model_options,
-            index=None, #Nothing preselected
-            placeholder="Choose a model", #Shown while the selectbox is empty
-        )
-
-        if selected_model: #No generation until user sleects a model
+        if selected_model: #No generation until user selects a model
 
             # Generate an answer using the OpenAI API.
             stream = client.chat.completions.create(
