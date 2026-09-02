@@ -7,6 +7,8 @@ from openai import OpenAI
 
 st.sidebar.header("Settings:")
 st.sidebar.caption("Configure Output & Engine")
+st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"])
+
 #----------------- INSERTED SIDEBAR (VISUAL ONLY) -----------------EXAMPLE STARTS/PLEASE DELETE
 st.sidebar.radio("View Mode", ["Standard", "Detailed Analysis", "Debug"])
 st.sidebar.selectbox("Filter Category", ["All Sections", "Executive Summary", "Key Points"])
