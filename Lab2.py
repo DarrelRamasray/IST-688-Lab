@@ -8,36 +8,9 @@ from openai import OpenAI
 st.sidebar.header("**Settings:**")
 st.sidebar.caption("Configure Output Format & AI Model")
 st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"])
-model_options = [
-    "gpt-3.5-turbo", 
-    "gpt-5-nano", 
-    "gpt-4o-mini", 
-    "gpt-4.1", 
-    "gpt-5.6-luna", 
-    "gpt-5.6-terra", 
-    "gpt-5.6-sol"
-]
-
-model_labels = {
-    "gpt-3.5-turbo": "gpt-3.5-turbo (Legacy)",
-    "gpt-5-nano": "gpt-5-nano (Micro)",
-    "gpt-4o-mini": "gpt-4o-mini (Budget)",
-    "gpt-4.1": "gpt-4.1 (Advanced)",
-    "gpt-5.6-luna": "gpt-5.6-luna (Modern Efficiency)",
-    "gpt-5.6-terra": "gpt-5.6-terra (Balanced Frontier)",
-    "gpt-5.6-sol": "gpt-5.6-sol (Absolute Best)",
-}
-
-selected_model = st.sidebar.selectbox(
-    "**Select Model**",
-    options=model_options,
-    format_func=lambda model_id: model_labels.get(model_id, model_id),
-    index=2  # Defaults to "gpt-4o-mini"
-)
-#st.sidebar.selectbox("**Specify AI Model**", ["                  "])
+st.sidebar.selectbox("**Select Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"])
 st.sidebar.checkbox("Use Advanced Model", value=False)
 st.sidebar.button("Clear Cache")
-
 
 # Show title and description.
 st.title(":blue[Lab 2:] :grey[Deep] Scan Protocol")  #Updated title
