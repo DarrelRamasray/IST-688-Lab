@@ -15,7 +15,7 @@ summary_type = st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summ
 )  #Stored
 
 #Model Selection
-base_model = st.sidebar.selectbox("**Select Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1",],
+base_model = st.sidebar.selectbox("**Select AI Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1",],
     index=None,
     placeholder="Choose a model",
 )  #Stored
