@@ -1,6 +1,7 @@
 #DARREL RAMASRAY
 #IST 688 - Building HC-AI Apps
 #Lab02
+
 import streamlit as st
 from openai import OpenAI
 
@@ -13,12 +14,13 @@ summary_type = st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summ
     placeholder="Choose a format",
 )  #Stored
 
-use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)  #Read before the dropdown so it can disable it
-base_model = st.sidebar.selectbox("**Select AI Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini",],
+#Model Selection
+base_model = st.sidebar.selectbox("**Select AI Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini", "gpt-4.1",],
     index=None,
     placeholder="Choose a model",
-    disabled=use_advanced,  #Greyed out when the advanced model is in use
 )  #Stored
+
+use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)  #When checked the advanced model is used instead
 advanced_model = "gpt-4.1"
 selected_model = advanced_model if use_advanced else base_model  #Model selection sent to the API
 
@@ -26,11 +28,11 @@ if st.sidebar.button("Clear Cache"):  #Clears the cached key validation
     st.cache_data.clear()
 
 generate = st.sidebar.button("Generate Summary", type="primary")  #Nothing is sent to the API until this is clicked
-
 inputs_ready = bool(summary_type) and bool(selected_model)  #A format is always required, and a model must come from the dropdown or the checkbox
 
 # Show title and description.
 st.title(":blue[Lab 2:] :grey[Deep] Scan Protocol")  #Updated title
+
 st.write(
     "Upload a document below, then select summary format and model. "
 )
@@ -60,12 +62,15 @@ elif not is_valid_key(openai_api_key):  #Validate the API key when entered
     st.error("Invalid API key. Please try again.")  #Error displayed
 else:
     st.success("Access granted!")  #Confirmation
+
     # Create an OpenAI client.
     client = OpenAI(api_key=openai_api_key)
+
     # Let the user upload a file via `st.file_uploader`.
     uploaded_file = st.file_uploader(
         "Upload a document (.txt or .md)", type=("txt", "md")
     )
+
     if uploaded_file and generate and inputs_ready:  #Runs once selections are made
         # Process the uploaded file and question.
         document = uploaded_file.read().decode()
@@ -75,12 +80,15 @@ else:
                 "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]}", #Summary format is now the instruction
             }
         ]
+
         if selected_model: #No generation until user selects a model
+
             # Generate an answer using the OpenAI API.
             stream = client.chat.completions.create(
                 model=selected_model,
                 messages=messages,
                 stream=True,
             )
+
             # Stream the response to the app using `st.write_stream`.
             st.write_stream(stream)
