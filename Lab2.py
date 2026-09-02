@@ -6,16 +6,38 @@ import streamlit as st
 from openai import OpenAI
 
 st.sidebar.header("**Settings:**")
-st.sidebar.caption("Configure Output & Engine")
+st.sidebar.caption("Configure Output Format & AI Model")
 st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"])
-st.sidebar.checkbox("Use Advanced Model", value=False)
+model_options = [
+    "gpt-3.5-turbo", 
+    "gpt-5-nano", 
+    "gpt-4o-mini", 
+    "gpt-4.1", 
+    "gpt-5.6-luna", 
+    "gpt-5.6-terra", 
+    "gpt-5.6-sol"
+]
 
-#----------------- INSERTED SIDEBAR (VISUAL ONLY) -----------------EXAMPLE STARTS/PLEASE DELETE
-st.sidebar.radio("View Mode", ["Standard", "Detailed Analysis", "Debug"])
-st.sidebar.checkbox("Highlight Citations", value=True)
-st.sidebar.slider("Chunk Window Size", min_value=100, max_value=1000, value=500, step=50)
+model_labels = {
+    "gpt-3.5-turbo": "gpt-3.5-turbo (Legacy)",
+    "gpt-5-nano": "gpt-5-nano (Micro)",
+    "gpt-4o-mini": "gpt-4o-mini (Budget)",
+    "gpt-4.1": "gpt-4.1 (Advanced)",
+    "gpt-5.6-luna": "gpt-5.6-luna (Modern Efficiency)",
+    "gpt-5.6-terra": "gpt-5.6-terra (Balanced Frontier)",
+    "gpt-5.6-sol": "gpt-5.6-sol (Absolute Best)",
+}
+
+selected_model = st.sidebar.selectbox(
+    "**Select Model**",
+    options=model_options,
+    format_func=lambda model_id: model_labels.get(model_id, model_id),
+    index=2  # Defaults to "gpt-4o-mini"
+)
+#st.sidebar.selectbox("**Specify AI Model**", ["                  "])
+st.sidebar.checkbox("Use Advanced Model", value=False)
 st.sidebar.button("Clear Cache")
-# -------------------------------------------------------------------EXAMPLE ENDS/PLEASE DELETE
+
 
 # Show title and description.
 st.title(":blue[Lab 2:] :grey[Deep] Scan Protocol")  #Updated title
@@ -24,7 +46,6 @@ st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
 )
 
-
 @st.cache_data  #Caches result
 def is_valid_key(key: str) -> bool:  #Validation function
     try:
@@ -32,7 +53,6 @@ def is_valid_key(key: str) -> bool:  #Validation function
         return True
     except Exception:
         return False
-
 
 # Ask user for their OpenAI API key via `st.text_input`.
 # Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
@@ -73,7 +93,8 @@ else:
             }
         ]
 
-        model_options = ["gpt-3.5-turbo", "gpt-4.1", "gpt-5-chat-latest", "gpt-5-nano"]  #Available models
+        ###model_options = ["gpt-3.5-turbo", "gpt-4o-mini","gpt-4.1", "gpt-5-nano"]  #Available models ##################################################
+
         selected_model = st.selectbox("Model",
             model_options,
             index=None, #Nothing preselected
