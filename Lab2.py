@@ -5,13 +5,13 @@
 import streamlit as st
 from openai import OpenAI
 
-st.sidebar.header("Settings:")
+st.sidebar.header("**Settings:"**)
 st.sidebar.caption("Configure Output & Engine")
 st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"])
+st.sidebar.checkbox("Use Advanced Model", value=True)
 
 #----------------- INSERTED SIDEBAR (VISUAL ONLY) -----------------EXAMPLE STARTS/PLEASE DELETE
 st.sidebar.radio("View Mode", ["Standard", "Detailed Analysis", "Debug"])
-st.sidebar.selectbox("Filter Category", ["All Sections", "Executive Summary", "Key Points"])
 st.sidebar.checkbox("Highlight Citations", value=True)
 st.sidebar.slider("Chunk Window Size", min_value=100, max_value=1000, value=500, step=50)
 st.sidebar.button("Clear Cache")
