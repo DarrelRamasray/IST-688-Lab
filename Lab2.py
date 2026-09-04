@@ -104,6 +104,14 @@ def is_valid_key(key: str) -> bool:  #Validation function
 
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")  #Key read from .streamlit/secrets.toml (or App settings > Secrets)
 
+#################################################
+try:
+    OpenAI(api_key=openai_api_key).models.list()
+    st.write("key check passed")
+except Exception as e:
+    st.error(f"{type(e).__name__}: {e}")
+#################################################
+
 summary_instructions = {
     "100-Word Summary": "Summarize the document in about 100 words.",
     "2 Paragraph Summary": "Summarize the document in 2 connecting paragraphs.",
