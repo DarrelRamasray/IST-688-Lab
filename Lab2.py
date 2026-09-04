@@ -6,25 +6,20 @@ from openai import OpenAI
 import time  #Used to pace the loader steps
 
 ##***
-st.markdown(  #Tightens the default spacing around sidebar dividers and headings
+st.markdown(  #Evens out the spacing between sidebar sections
     """
     <style>
-    section[data-testid="stSidebar"] hr { margin: 0.75rem 0; }
-    section[data-testid="stSidebar"] h3 { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+    section[data-testid="stSidebar"] h3 { margin-top: 1.5rem; margin-bottom: 0rem; }
+    section[data-testid="stSidebar"] div[data-testid="stCaptionContainer"] { margin-bottom: 0.25rem; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 ##***
 
-#st.sidebar.header("**Settings:**")
-##***
 st.sidebar.header(":material/settings: **Settings:**")  #Header with icon
-##***
 st.sidebar.caption("Configure Output Format & AI Model")
-##***
-st.sidebar.divider()  #Separates the settings caption from the first section
-##***
+#st.sidebar.divider()  #Separates the settings caption from the first section
 
 #Output Language
 st.sidebar.subheader(":material/translate: Language")  #Section heading with icon
@@ -38,9 +33,7 @@ language = st.sidebar.selectbox("Language", ["English", "Mandarin Chinese", "Hin
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
 
-##***
-st.sidebar.divider()  #Separates the language section from the format section
-##***
+#st.sidebar.divider()  #Separates the language section from the format section
 
 #Summary Type
 st.sidebar.subheader(":material/description: Specify Output Format")  #Section heading with icon
@@ -55,7 +48,7 @@ summary_type = st.sidebar.selectbox("Specify Output Format", ["100-Word Summary"
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
 
-st.sidebar.divider()  #Separates the model section
+#st.sidebar.divider()  #Separates the model section
 
 #Model Selection
 st.sidebar.subheader(":material/computer: Model Selection")  #Section heading with icon
