@@ -5,31 +5,26 @@ import streamlit as st
 from openai import OpenAI
 import time  #Used to pace the loader steps
 
-#st.markdown(  #Evens out the spacing between sidebar sections
-#    """
-#    <style>
-#    section[data-testid="stSidebar"] h3 { margin-top: 1.5rem; margin-bottom: 0rem; }
-#    section[data-testid="stSidebar"] div[data-testid="stCaptionContainer"] { margin-bottom: 0.25rem; }
-#    </style>
-#    """,
-#    unsafe_allow_html=True,
-#)
 ##***
-st.markdown(  #Evens out the spacing between sidebar sections
+st.markdown(  #Tightens the default spacing around sidebar dividers and headings
     """
     <style>
-    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] { gap: 0.3rem; }
-    section[data-testid="stSidebar"] h2 { margin-bottom: 0rem; padding-bottom: 0rem; }
-    section[data-testid="stSidebar"] h3 { margin-top: 1rem; margin-bottom: 0rem; padding-bottom: 0rem; }
+    section[data-testid="stSidebar"] hr { margin: 0.75rem 0; }
+    section[data-testid="stSidebar"] h3 { margin-top: 0.25rem; margin-bottom: 0.25rem; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 ##***
 
+#st.sidebar.header("**Settings:**")
+##***
 st.sidebar.header(":material/settings: **Settings:**")  #Header with icon
+##***
 st.sidebar.caption("Configure Output Format & AI Model")
-#st.sidebar.divider()  #Separates the settings caption from the first section
+##***
+st.sidebar.divider()  #Separates the settings caption from the first section
+##***
 
 #Output Language
 st.sidebar.subheader(":material/translate: Language")  #Section heading with icon
@@ -43,7 +38,9 @@ language = st.sidebar.selectbox("Language", ["English", "Mandarin Chinese", "Hin
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
 
-#st.sidebar.divider()  #Separates the language section from the format section
+##***
+st.sidebar.divider()  #Separates the language section from the format section
+##***
 
 #Summary Type
 st.sidebar.subheader(":material/description: Specify Output Format")  #Section heading with icon
@@ -58,7 +55,7 @@ summary_type = st.sidebar.selectbox("Specify Output Format", ["100-Word Summary"
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
 
-#st.sidebar.divider()  #Separates the model section
+st.sidebar.divider()  #Separates the model section
 
 #Model Selection
 st.sidebar.subheader(":material/computer: Model Selection")  #Section heading with icon
@@ -92,10 +89,7 @@ st.write(
 if generate and not inputs_ready:  #Error shown when either sidebar selection is missing
     st.error("Error! Please choose a summary format before generating.")  #Model no longer needs selecting
 
-#@st.cache_data  #Caches result
-##***
-@st.cache_data(ttl=300)  #Caches result, but re-checks after 5 minutes so a stale failure clears itself
-##***
+@st.cache_data  #Caches result
 def is_valid_key(key: str) -> bool:  #Validation function
     try:
         OpenAI(api_key=key).models.list()  #Checks key
