@@ -3,65 +3,51 @@
 #Lab02
 import streamlit as st
 from openai import OpenAI
-import time  #Used to pace the loader steps
 
-#st.markdown(  #Evens out the spacing between sidebar sections
-#    """
-#    <style>
-#    section[data-testid="stSidebar"] h3 { margin-top: 1.5rem; margin-bottom: 0rem; }
-#    section[data-testid="stSidebar"] div[data-testid="stCaptionContainer"] { margin-bottom: 0.25rem; }
-#    </style>
-#    """,
-#    unsafe_allow_html=True,
-#)
-##***
-st.markdown(  #Evens out the spacing between sidebar sections
-    """
-    <style>
-    section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] { gap: 0.3rem; }
-    section[data-testid="stSidebar"] h2 { margin-bottom: 0rem; padding-bottom: 0rem; }
-    section[data-testid="stSidebar"] h3 { margin-top: 1rem; margin-bottom: 0rem; padding-bottom: 0rem; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-##***
-
-st.sidebar.header(":material/settings: **Settings:**")  #Header with icon
-st.sidebar.caption("Configure Output Format & AI Model")
-#st.sidebar.divider()  #Separates the settings caption from the first section
+#st.sidebar.header("**Settings:**")
+#st.sidebar.caption("Configure Output Format & AI Model")
 
 #Output Language
+##***
 st.sidebar.subheader(":material/translate: Language")  #Section heading with icon
-st.sidebar.caption("Select Language")  #Caption sits above the dropdown
+st.sidebar.caption("Select language:")  #Caption now sits above the dropdown
+##***
 #language = st.sidebar.selectbox("**Language**", ["English", "Mandarin Chinese", "Hindi", "Spanish", "French"],
 #    index=0,  #English preselected
 #)  #Stored
 #st.sidebar.caption("Select Language")  #Caption for the dropdown above
+##***
 language = st.sidebar.selectbox("Language", ["English", "Mandarin Chinese", "Hindi", "Spanish", "French"],
     index=0,  #English preselected
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
-
-#st.sidebar.divider()  #Separates the language section from the format section
+##***
 
 #Summary Type
-st.sidebar.subheader(":material/description: Specify Output Format")  #Section heading with icon
-st.sidebar.caption("Select type of summary")  #Caption sits above the dropdown
+##***
+st.sidebar.subheader(":material/description: Summary")  #Section heading with icon
+st.sidebar.caption("Select type of summary:")  #Caption now sits above the dropdown
+##***
 #summary_type = st.sidebar.selectbox("**Specify Output Format**", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"],
 #    index=None,
 #    placeholder="Choose a format",
 #)  #Stored
+##***
 summary_type = st.sidebar.selectbox("Specify Output Format", ["100-Word Summary", "2 Paragraph Summary", "5-Bullet Summary"],
     index=None,
     placeholder="Choose a format",
     label_visibility="collapsed",  #Hidden so the caption above acts as the label
 )  #Stored
 
-#st.sidebar.divider()  #Separates the model section
+st.sidebar.divider()  #Separates the model section
+##***
 
 #Model Selection
+#st.sidebar.markdown("**Model Selection**")  #Replaces the old dropdown label
+#model_caption = st.sidebar.empty()  #Reserves the caption spot so it sits above the checkbox
+##***
 st.sidebar.subheader(":material/computer: Model Selection")  #Section heading with icon
+##***
 
 use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)  #Switches between the two models below
 #base_model = st.sidebar.selectbox("**Select AI Model**", ["gpt-3.5-turbo", "gpt-5-nano", "gpt-4o-mini",],
@@ -74,12 +60,28 @@ use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)  #Switches
 basic_model = "gpt-5.4-nano"  #Model used by default
 advanced_model = "gpt-5.4-mini"  #Model used when the box above is checked
 selected_model = advanced_model if use_advanced else basic_model  #Model selection sent to the API
+#model_caption.caption("_Now using GPT-5.4 Mini_" if use_advanced else "_You are using GPT-5.4 Nano_")  #Shows which model is active
+##***
 st.sidebar.caption("_Now using model GPT-5.4 Mini._" if use_advanced else "_You are using model GPT-5.4 Nano._")  #Shows which model is active
+##***
 
-#if st.sidebar.button("Clear Cache"):  #Clears the cached key validation
-#    st.cache_data.clear()
+if st.sidebar.button("Clear Cache"):  #Clears the cached key validation
+    st.cache_data.clear()
 
 generate = st.sidebar.button("Generate Summary", type="primary")  #Nothing is sent to the API until this is clicked
+
+#dark_mode = st.sidebar.toggle("Dark Mode", value=False)  #Last item in the sidebar
+#if dark_mode:  #Applies a dark palette over the default theme
+#    st.markdown(
+#        """
+#        <style>
+#        .stApp { background-color: #0e1117; color: #fafafa; }
+#        section[data-testid="stSidebar"] { background-color: #1a1c24; }
+#        .stApp p, .stApp li, .stApp label, .stApp h1, .stApp h2, .stApp h3 { color: #fafafa; }
+#        </style>
+#        """,
+#        unsafe_allow_html=True,
+#    )
 
 inputs_ready = bool(summary_type)  #A model is always set now, so only the format has to be chosen
 
@@ -92,10 +94,7 @@ st.write(
 if generate and not inputs_ready:  #Error shown when either sidebar selection is missing
     st.error("Error! Please choose a summary format before generating.")  #Model no longer needs selecting
 
-#@st.cache_data  #Caches result
-##***
-@st.cache_data(ttl=300)  #Caches result, but re-checks after 5 minutes so a stale failure clears itself
-##***
+@st.cache_data  #Caches result
 def is_valid_key(key: str) -> bool:  #Validation function
     try:
         OpenAI(api_key=key).models.list()  #Checks key
@@ -134,24 +133,10 @@ else:
         ]
         if selected_model: #No generation until user selects a model
             # Generate an answer using the OpenAI API.
-            with st.status(":material/radar: Initializing Deep Scan Protocol...", expanded=True) as scan:  #Live loader while the request runs
-                st.write(f":material/description: Parsing document — {len(document.split())} words detected")
-                time.sleep(0.4)
-                st.write(f":material/memory: Routing request to {selected_model}")
-                time.sleep(0.4)
-                st.write(f":material/translate: Output language set to {language}")
-                time.sleep(0.4)
-                st.write(":material/bolt: Establishing stream...")
-                stream = client.chat.completions.create(
-                    model=selected_model,
-                    messages=messages,
-                    stream=True,
-                )
-                scan.update(label=":material/check_circle: Scan complete", state="complete", expanded=False)  #Collapses once the stream is open
-#            stream = client.chat.completions.create(
-#                model=selected_model,
-#                messages=messages,
-#                stream=True,
-#            )
+            stream = client.chat.completions.create(
+                model=selected_model,
+                messages=messages,
+                stream=True,
+            )
             # Stream the response to the app using `st.write_stream`.
             st.write_stream(stream)
