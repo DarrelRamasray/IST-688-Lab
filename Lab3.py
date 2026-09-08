@@ -5,47 +5,25 @@
 import streamlit as st
 from openai import OpenAI
 
-##***
-# Part B additions:
-#   Step 3  - conversation buffer: keep only the last 2 messages from the user
-#             (and the LLM's responses to those messages)
-#   Step 4a - calculate the total number of tokens passed to the LLM per request
-#   Step 4b - token-based buffer: pass at most MAX_TOKENS to the LLM
-#
-# requirements.txt now also needs:
-#     tiktoken
-# tiktoken downloads its encoding file the first time it is used, so the
-# deployed app needs outbound network access on that first token count.
-# If tiktoken is unavailable the app still runs and falls back to an estimate.
 try:
     import tiktoken
 except ImportError:
     tiktoken = None
-##***
 
 model_to_use = "gpt-5.4-mini"
 
-##***
-# --- Part B settings: defined in the application, not exposed to the user ---
-BUFFER_USER_TURNS = 2    # step 3: how many of the user's most recent messages to keep
-MAX_TOKENS = 1000        # step 4b: ceiling on the tokens sent in one request
-##***
+buffer = 2
+max_tokens = 1000
 
 st.title(":blue[Lab 3:] :grey[Deep] Chatbot")
 st.write("Ask me anything!")
 
-##***
-# Both buffers from Part B are implemented below, so this radio decides which
-# one is applied to the next request. This exists to make each part of the lab
-# demonstrable side by side -- to hardwire one instead, delete the radio and
-# set the variable directly, e.g.  buffer_mode = "Token limit"
-buffer_mode = st.sidebar.radio(
-    "Conversation buffer",
+buffer_mode = st.sidebar.radio("Conversation buffer",
     ("Last 2 user turns", "Token limit", "No buffer (Part A)"),
     index=0,
 )
 st.sidebar.caption(
-    f"Turns kept: {BUFFER_USER_TURNS}  |  Token ceiling: {MAX_TOKENS}"
+    f"Turns kept: {buffer}  |  Token ceiling: {max_tokens}"
 )
 ##***
 
@@ -110,7 +88,7 @@ def count_request_tokens(messages):
 
 # --- Buffers ----------------------------------------------------------------
 
-def buffer_by_user_turns(messages, turns=BUFFER_USER_TURNS):
+def buffer_by_user_turns(messages, turns=buffer):
     """Step 3: keep only the last `turns` messages from the user, plus
     everything that came after the first of them -- which is exactly the LLM's
     responses to those messages.
@@ -128,7 +106,7 @@ def buffer_by_user_turns(messages, turns=BUFFER_USER_TURNS):
     return messages[start:]
 
 
-def buffer_by_tokens(messages, max_tokens=MAX_TOKENS):
+def buffer_by_tokens(messages, max_tokens=max_tokens):
     """Step 4b: walk backwards from the newest message, keeping messages while
     the running total stays within max_tokens.
 
