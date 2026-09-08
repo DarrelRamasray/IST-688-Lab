@@ -13,7 +13,7 @@ except ImportError:
 model_to_use = "gpt-5.4-mini"
 
 buffer = 2
-max_tokens = 1000
+max_tokens = 500
 
 st.title(":blue[Lab 3:] :grey[Deep] Chatbot")
 st.write("Ask me anything!")
@@ -25,7 +25,6 @@ buffer_mode = st.sidebar.radio("Conversation buffer",
 st.sidebar.caption(
     f"Turns kept: {buffer}  |  Token ceiling: {max_tokens}"
 )
-##***
 
 if "client" not in st.session_state:
     api_key = st.secrets["OPENAI_API_KEY"]
@@ -46,26 +45,18 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "How can I help you?"}
     ]
 
-##***
-# --- Token counting (step 4a) ----------------------------------------------
-
 @st.cache_resource
 def get_encoding():
     """Load the tokenizer once and reuse it across reruns."""
     if tiktoken is None:
         return None
     try:
-        # tiktoken may not recognise a very new model name.
         return tiktoken.encoding_for_model(model_to_use)
     except Exception:
-        # o200k_base is the encoding used by the recent GPT model families.
-        # If this model's exact encoding differs, counts are close but not exact.
         return tiktoken.get_encoding("o200k_base")
-
 
 def count_message_tokens(msg):
     """Approximate the token cost of one message.
-
     The +4 accounts for the formatting the API wraps around every message
     (role markers and separators). It is an approximation, not an exact
     reproduction of OpenAI's internal accounting.
@@ -74,31 +65,24 @@ def count_message_tokens(msg):
     text = str(msg.get("role", "")) + str(msg.get("content", ""))
 
     if encoding is None:
-        # Fallback when tiktoken is not installed: roughly 4 characters per token.
         return len(text) // 4 + 4
 
     return len(encoding.encode(text)) + 4
-
 
 def count_request_tokens(messages):
     """Total tokens for an entire request. The +3 is the priming the API adds
     when it asks the model for a reply."""
     return sum(count_message_tokens(m) for m in messages) + 3
 
-
-# --- Buffers ----------------------------------------------------------------
-
 def buffer_by_user_turns(messages, turns=buffer):
     """Step 3: keep only the last `turns` messages from the user, plus
     everything that came after the first of them -- which is exactly the LLM's
     responses to those messages.
-
     Slicing from the Nth-from-last user message means the buffer always starts
     with a user message and the user/assistant pairs stay intact.
     """
     user_indexes = [i for i, m in enumerate(messages) if m["role"] == "user"]
 
-    # Not enough user messages yet, so there is nothing to trim.
     if len(user_indexes) <= turns:
         return list(messages)
 
@@ -115,7 +99,7 @@ def buffer_by_tokens(messages, max_tokens=max_tokens):
     exceeds the ceiling, since sending an empty list would fail the API call.
     """
     kept = []
-    total = 3  # the reply priming that count_request_tokens also adds
+    total = 3
 
     for msg in reversed(messages):
         msg_tokens = count_message_tokens(msg)
@@ -127,13 +111,7 @@ def buffer_by_tokens(messages, max_tokens=max_tokens):
         total += msg_tokens
 
     return kept
-##***
 
-##***
-# The display loop below deliberately still walks the FULL history. The buffer
-# controls what is sent to the model, not what the user sees, so the visible
-# conversation is never truncated.
-##***
 for msg in st.session_state.messages:
     chat_msg = st.chat_message(msg["role"])
     chat_msg.write(msg["content"])
@@ -146,32 +124,24 @@ if prompt := st.chat_input("What is up?"):
 
     client = st.session_state.client
 
-    ##***
-    # Build the trimmed list that is actually sent to the LLM.
     if buffer_mode == "Last 2 user turns":
         messages_to_send = buffer_by_user_turns(st.session_state.messages)
     elif buffer_mode == "Token limit":
         messages_to_send = buffer_by_tokens(st.session_state.messages)
     else:
-        # Part A behaviour: the whole conversation goes every time.
         messages_to_send = st.session_state.messages
 
-    # Step 4a: record the token accounting so it can be shown in the sidebar.
     st.session_state.last_request_messages = len(messages_to_send)
     st.session_state.last_request_total = len(st.session_state.messages)
     st.session_state.last_request_tokens = count_request_tokens(messages_to_send)
     st.session_state.last_request_full_tokens = count_request_tokens(
         st.session_state.messages
     )
-    ##***
 
     try:
         stream = client.chat.completions.create(
             model = model_to_use,
-            #messages=st.session_state.messages,
-            ##***
             messages=messages_to_send,
-            ##***
             stream=True,
         )
 
@@ -184,9 +154,6 @@ if prompt := st.chat_input("What is up?"):
 
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-##***
-# Step 4a display: what the last request actually cost. Reading from
-# session_state means the numbers survive reruns instead of vanishing.
 if "last_request_tokens" in st.session_state:
     st.sidebar.divider()
     st.sidebar.write("**Last request sent to the LLM**")
@@ -200,4 +167,5 @@ if "last_request_tokens" in st.session_state:
     )
     if tiktoken is None:
         st.sidebar.caption("Estimated: tiktoken is not installed.")
-##***
+
+#Indicate token based or user based buffer
