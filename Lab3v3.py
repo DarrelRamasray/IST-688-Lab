@@ -15,40 +15,24 @@ model_to_use = "gpt-5.4-mini"
 buffer = 2
 max_tokens = 500
 
-SYSTEM_PROMPT = """You are a friendly explainer bot.
-
-HOW TO WRITE:
-- Explain everything so that a 10-year-old can understand it.
-- Use short sentences and everyday words. Compare things to stuff a kid already knows.
-- If you have to use a difficult word, explain what it means right away.
-- Keep each answer to about 3 to 5 sentences.
-- Do not use bullet points, headings, or emoji.
-
-WHAT TO DO ON EACH TURN:
-1. If the user asks a question, answer it, then end your message with exactly this line:
-Do you want more info?
-2. If the user says yes (or anything that means yes), give MORE detail about the same
-topic you were just explaining. Add a new fact, an example, or a comparison you have
-not used yet. Then end your message again with exactly this line:
-Do you want more info?
-3. If the user says no (or anything that means no), do not give more detail and do not
-ask "Do you want more info?" again. Say something short and friendly, then ask what
-else you can help with.
-4. If the user sends a brand new question instead of yes or no, treat it as a new
-question and follow rule 1.
-5. If the user says yes but you cannot tell what the earlier topic was, ask them to
-remind you what they want to hear more about. Never guess at the topic.
-"""
-
 st.title(":blue[Lab 3:] :grey[Deep] Chatbot")
 st.write("Ask me anything!")
 
-buffer_mode = st.sidebar.radio("Conversation buffer", ("Last 2 user turns", "Token limit"), index=0,)
-
-st.sidebar.caption(f"Turns kept: {buffer}  |  Token ceiling: {max_tokens}")
+buffer_mode = st.sidebar.radio("Conversation buffer",
+    ("Last 2 user turns", "Token limit", "No buffer (Part A)"),
+    index=0,
+)
+st.sidebar.caption(
+    f"Turns kept: {buffer}  |  Token ceiling: {max_tokens}"
+)
 
 if "client" not in st.session_state:
     api_key = st.secrets["OPENAI_API_KEY"]
+
+    #try:
+    #    api_key = st.secrets["OPENAI_API_KEY"]
+    #except Exception:
+    #    api_key = None
 
     if not api_key:
         st.error("OPENAI_API_KEY invalid!")
@@ -106,7 +90,7 @@ def buffer_by_user_turns(messages, turns=buffer):
     return messages[start:]
 
 
-def buffer_by_tokens(messages, max_tokens=max_tokens, reserved=0):
+def buffer_by_tokens(messages, max_tokens=max_tokens):
     """Step 4b: walk backwards from the newest message, keeping messages while
     the running total stays within max_tokens.
 
@@ -115,8 +99,7 @@ def buffer_by_tokens(messages, max_tokens=max_tokens, reserved=0):
     exceeds the ceiling, since sending an empty list would fail the API call.
     """
     kept = []
-
-    total = 3 + reserved
+    total = 3
 
     for msg in reversed(messages):
         msg_tokens = count_message_tokens(msg)
@@ -126,6 +109,7 @@ def buffer_by_tokens(messages, max_tokens=max_tokens, reserved=0):
 
         kept.insert(0, msg)
         total += msg_tokens
+
     return kept
 
 for msg in st.session_state.messages:
@@ -140,26 +124,18 @@ if prompt := st.chat_input("What is up?"):
 
     client = st.session_state.client
 
-    system_msg = {"role": "system", "content": SYSTEM_PROMPT}
-    system_tokens = count_message_tokens(system_msg)
-
     if buffer_mode == "Last 2 user turns":
         messages_to_send = buffer_by_user_turns(st.session_state.messages)
+    elif buffer_mode == "Token limit":
+        messages_to_send = buffer_by_tokens(st.session_state.messages)
     else:
-        messages_to_send = buffer_by_tokens(
-            st.session_state.messages, reserved=system_tokens
-        )
-
-    messages_to_send = [system_msg] + messages_to_send
+        messages_to_send = st.session_state.messages
 
     st.session_state.last_request_messages = len(messages_to_send)
-    st.session_state.last_request_total = len(st.session_state.messages) + 1
-    st.session_state.last_request_system = system_tokens
-    st.session_state.last_request_mode = buffer_mode
+    st.session_state.last_request_total = len(st.session_state.messages)
     st.session_state.last_request_tokens = count_request_tokens(messages_to_send)
-
     st.session_state.last_request_full_tokens = count_request_tokens(
-        [system_msg] + st.session_state.messages
+        st.session_state.messages
     )
 
     try:
@@ -181,7 +157,6 @@ if prompt := st.chat_input("What is up?"):
 if "last_request_tokens" in st.session_state:
     st.sidebar.divider()
     st.sidebar.write("**Last request sent to the LLM**")
-    st.sidebar.write(f"Buffer used: {st.session_state.last_request_mode}")
     st.sidebar.write(
         f"Messages: {st.session_state.last_request_messages} "
         f"of {st.session_state.last_request_total}"
@@ -190,9 +165,7 @@ if "last_request_tokens" in st.session_state:
         f"Tokens: {st.session_state.last_request_tokens} "
         f"(full history would be {st.session_state.last_request_full_tokens})"
     )
-    st.sidebar.caption(
-        f"Of those, {st.session_state.last_request_system} tokens are the "
-        f"system prompt, which is never trimmed."
-    )
     if tiktoken is None:
         st.sidebar.caption("Estimated: tiktoken is not installed.")
+
+#Indicate token based or user based buffer
