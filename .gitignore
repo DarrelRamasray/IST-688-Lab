@@ -1,4 +1,8 @@
+# Streamlit
 .streamlit/secrets.toml
+
+# ChromaDB (generated at runtime, not source)
+ChromaDB_for_Lab/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
