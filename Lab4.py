@@ -146,9 +146,14 @@ def load_pdfs_to_collection(folder_path, collection):
     folder = Path(folder_path)
     pdf_paths = sorted(p for p in folder.iterdir() if p.suffix.lower() == '.pdf')
 
+    existing = set(collection.get()['ids']) #Files already embedded, so an interrupted load resumes instead of duplicating
+
     loaded = []
 
     for pdf_path in pdf_paths:
+        if pdf_path.name in existing:
+            continue #Already in the collection; no second embeddings call and no duplicate id
+
         text = extract_text_from_pdf(pdf_path)
 
         if not text:
@@ -191,20 +196,25 @@ def create_lab4_vectordb(): #Part A, Step 2: the one function that builds the wh
 
     st.session_state.Lab4_ChromaClient = chroma_client #Held so the client is not garbage collected
 
-    # Check if collection is empty and load PDFs
-    if collection.count() == 0: #Embeds once; a populated DB on disk is reused as-is
-        folder = find_data_folder()
+    folder = find_data_folder()
 
-        if folder is None:
+    if folder is None:
+        if collection.count() == 0:
             st.error(f'Could not find the folder {DATA_SUBFOLDER} containing the syllabus PDFs.')
             st.stop()
 
+        return collection #Already populated, so a missing folder is not fatal
+
+    pdf_total = len([p for p in folder.iterdir() if p.suffix.lower() == '.pdf'])
+
+    # Check if any PDFs are missing from the collection and load them
+    if collection.count() < pdf_total: #Covers an empty collection AND a load that was interrupted part way
         with st.spinner('Embedding the syllabus PDFs (one time only)...'):
             loaded = load_pdfs_to_collection(folder, collection)
 
         if loaded:
             st.success(f'Added {len(loaded)} PDFs to {COLLECTION_NAME}: ' + ', '.join(loaded))
-        else:
+        elif collection.count() == 0:
             st.error(f'No PDFs were loaded from {folder}.')
 
     return collection
@@ -275,7 +285,7 @@ def get_info_from_vectorDB(collection, query, n_results=N_RESULTS):
 
 
 #### MAIN APP ####
-st.title('Lab 4: Chatbot using RAG')
+st.title(":blue[Lab 4:] :grey[Deep] Chatbot | RAG")
 
 # Create OpenAI client
 if 'openai_client' not in st.session_state: #Built before the vector DB, because add_to_collection uses it
@@ -325,8 +335,15 @@ st.sidebar.caption(f'Documents in {COLLECTION_NAME}: {collection.count()}') #Qui
 
 #### PART B: COURSE INFORMATION CHATBOT ####
 if 'messages' not in st.session_state: #Guard stops the history being wiped on every rerun
+    codes_available = course_codes_in_collection(collection) #Read from the DB, so it stays true if the PDFs change
+
+    if codes_available:
+        greeting = 'Ask me questions about IST ' + ', '.join(codes_available) + ' syllabi.'
+    else:
+        greeting = 'Ask me questions about the IST course syllabi.'
+
     st.session_state['messages'] = [
-        {'role': 'assistant', 'content': 'Ask me about the IST course syllabi.'}
+        {'role': 'assistant', 'content': greeting}
     ]
 
 for msg in st.session_state.messages: #Redraws the full visible history
