@@ -1,6 +1,7 @@
 #DARREL RAMASRAY
 #IST 688 - Building HC-AI Apps
-#Lab04
+#Lab04 - Part A: Create and test a ChromaDB database
+#Lab04 - Part B: Course information chatbot using RAG
 
 import streamlit as st
 from openai import OpenAI
@@ -36,7 +37,8 @@ REBUILD_COLLECTION = False
 MAX_EMBED_CHARS = 28000
 
 CHAT_MODEL = 'gpt-5.4-mini' #Part B, Step 5: same model as Lab 3
-N_RESULTS = 3 #Part B: how many syllabi are retrieved per question
+N_RESULTS = 5 #Part B: how many syllabi are retrieved per question. Raised from 3 because
+#a long syllabus has a heavily averaged vector and was being missed on topical queries.
 HISTORY_MESSAGES = 8 #How many past messages travel with each request
 
 #Part B, Step 5: prompt engineering. The retrieved syllabus text is appended to
@@ -57,6 +59,12 @@ part as coming from outside the course documents.
 assignment. If a detail is not in the context, say it is not in the syllabus.
 - Only give exact figures such as percentages, dates, or credit hours when they
 appear in the context.
+
+ATTRIBUTION
+- Every fact you state must be attributed to the course named in the COURSE: header
+of the block it came from. Read that header before naming a course.
+- Do not attribute a detail to any course whose block is not present in the context,
+even if that course was mentioned earlier in the conversation.
 
 STYLE
 - Be concise and direct. Short paragraphs, or a short list when comparing courses.
