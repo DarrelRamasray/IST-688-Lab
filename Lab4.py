@@ -5,6 +5,7 @@
 import streamlit as st
 from openai import OpenAI
 import sys
+import re
 import chromadb
 from pathlib import Path
 from PyPDF2 import PdfReader
@@ -23,6 +24,11 @@ COLLECTION_NAME = 'Lab4Collection' #Part A, Step 2: required collection name
 EMBEDDING_MODEL = 'text-embedding-3-small' #Part A, Step 2: OpenAI embeddings model
 CHROMA_PATH = './ChromaDB_for_Lab' #Where PersistentClient writes the DB files
 DATA_SUBFOLDER = Path('data') / 'Lab04' #Repo folder holding the 7 syllabus PDFs
+
+#Set to True for ONE run to wipe and re-embed the collection, then set back to
+#False. Needed after changing what text gets embedded, because an already
+#populated collection is otherwise reused untouched.
+REBUILD_COLLECTION = True
 
 #text-embedding-3-small errors above 8,191 tokens. A full syllabus is embedded as
 #ONE document in Part A (no chunking yet), so long text is capped here at roughly
@@ -57,6 +63,20 @@ STYLE
 - If the question is about several courses, answer course by course."""
 
 
+def parse_file_name(file_name): #Pulls the course code and title out of the filename
+    stem = Path(file_name).stem
+
+    match = re.match(r'\s*IST[\s\-]*(\d{3})', stem, re.IGNORECASE)
+    course_code = match.group(1) if match else ''
+
+    if ' - ' in stem:
+        course_title = stem.split(' - ', 1)[1].strip() #Text after the dash, e.g. "Data in Society"
+    else:
+        course_title = stem
+
+    return course_code, course_title
+
+
 #### EXTRACT TEXT FROM PDF ####
 # This function extracts text from each syllabus
 # to pass to add_to_collection
@@ -76,11 +96,22 @@ def extract_text_from_pdf(pdf_path):
 # text = extracted text from PDF files
 # Embeddings inserted into the collection from OpenAI
 def add_to_collection(collection, text, file_name):
+    course_code, course_title = parse_file_name(file_name)
+
+    #A course code appears under once per 1,000 characters inside its own syllabus,
+    #so it barely registers in a whole-document embedding. This header puts the
+    #course identity at the front of the embedded text, and the LLM sees it too.
+    document = (
+        f'COURSE: IST {course_code}\n'
+        f'COURSE TITLE: {course_title}\n'
+        f'SOURCE FILE: {file_name}\n\n'
+        + text
+    )
 
     # Create an embedding
     client = st.session_state.openai_client
     response = client.embeddings.create(
-        input=text,
+        input=document,
         model=EMBEDDING_MODEL
     )
 
@@ -89,10 +120,14 @@ def add_to_collection(collection, text, file_name):
 
     # Add embedding and document to ChromaDB
     collection.add(
-        documents=[text],
+        documents=[document],
         ids=file_name, #Part A, Step 2: the filename is the key
         embeddings=[embedding],
-        metadatas=[{'filename': file_name}] #Part A, Step 2: "use metadata as needed"
+        metadatas=[{ #Part A, Step 2: "use metadata as needed"
+            'filename': file_name,
+            'course_code': course_code, #Used by the course-code filter in get_info_from_vectorDB
+            'course_title': course_title
+        }]
     )
 
 
@@ -113,7 +148,7 @@ def load_pdfs_to_collection(folder_path, collection):
             continue
 
         if len(text) > MAX_EMBED_CHARS:
-            text = text[:MAX_EMBED_CHARS] #Truncate rather than let the embeddings call error out
+            text = text[:MAX_EMBED_CHARS] #Truncate the body; the header is added after this, so it always survives
 
         add_to_collection(collection, text, pdf_path.name) #Key/id is the filename
         loaded.append(pdf_path.name)
@@ -135,6 +170,15 @@ def find_data_folder(): #Walks up from this file so the app works whether Lab4.p
 
 def create_lab4_vectordb(): #Part A, Step 2: the one function that builds the whole vector DB
     chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
+
+    if REBUILD_COLLECTION: #Forces a fresh embed; runs once per session because of the Lab4_VectorDB guard
+        try:
+            chroma_client.delete_collection(COLLECTION_NAME)
+        except Exception:
+            pass #Nothing to delete on a first run
+
+        st.session_state.pop('Lab4_CourseCodes', None) #Cached code list is stale after a rebuild
+
     collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
 
     st.session_state.Lab4_ChromaClient = chroma_client #Held so the client is not garbage collected
@@ -158,9 +202,32 @@ def create_lab4_vectordb(): #Part A, Step 2: the one function that builds the wh
     return collection
 
 
+def course_codes_in_collection(collection): #The codes actually stored, read once per session
+    if 'Lab4_CourseCodes' not in st.session_state:
+        stored = collection.get(include=['metadatas'])['metadatas']
+
+        codes = set()
+
+        for meta in stored:
+            if meta and meta.get('course_code'):
+                codes.add(meta['course_code'])
+
+        st.session_state.Lab4_CourseCodes = sorted(codes)
+
+    return st.session_state.Lab4_CourseCodes
+
+
+def detect_course_codes(query, known_codes): #Finds 3-digit codes in the question that exist in the collection
+    found = re.findall(r'IST[\s\-]*(\d{3})', query, re.IGNORECASE) #"IST 387", "IST-387", "IST387"
+    found += re.findall(r'\b\d{3}\b', query) #A bare code, e.g. a follow-up like "and 488?"
+
+    return sorted(set(code for code in found if code in known_codes))
+
+
 #### RETRIEVE RELEVANT SYLLABI ####
 # Part B, Step 5: embeds the student's question, finds the closest syllabi, and
-# returns their text formatted for the prompt plus the filenames used.
+# returns their text formatted for the prompt, the filenames used, and any course
+# codes the question named.
 def get_info_from_vectorDB(collection, query, n_results=N_RESULTS):
     client = st.session_state.openai_client
 
@@ -171,9 +238,21 @@ def get_info_from_vectorDB(collection, query, n_results=N_RESULTS):
 
     query_embedding = response.data[0].embedding
 
+    #A named course code is an exact request, not a similarity guess, so it is
+    #answered with a metadata filter instead of being left to the vector search.
+    codes = detect_course_codes(query, course_codes_in_collection(collection))
+
+    where = None
+
+    if len(codes) == 1:
+        where = {'course_code': codes[0]}
+    elif len(codes) > 1:
+        where = {'course_code': {'$in': codes}}
+
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=n_results
+        n_results=n_results,
+        where=where #None means a normal similarity search across all 7 syllabi
     )
 
     documents = results['documents'][0]
@@ -184,7 +263,7 @@ def get_info_from_vectorDB(collection, query, n_results=N_RESULTS):
     for doc_id, doc in zip(ids, documents):
         blocks.append(f'--- SOURCE FILE: {doc_id} ---\n{doc}') #Headings let the LLM name its source
 
-    return '\n\n'.join(blocks), list(ids)
+    return '\n\n'.join(blocks), list(ids), codes
 
 
 #### MAIN APP ####
@@ -254,7 +333,7 @@ if prompt := st.chat_input('Ask about the IST courses...'):
     client = st.session_state.openai_client
 
     with st.spinner('Searching the syllabi...'):
-        extra_info, sources = get_info_from_vectorDB(collection, prompt) #Part B, Step 5: RAG lookup
+        extra_info, sources, codes = get_info_from_vectorDB(collection, prompt) #Part B, Step 5: RAG lookup
 
     #Rebuilt every turn and never appended to st.session_state.messages, so the
     #syllabus text is sent once per request instead of accumulating in the history
@@ -267,6 +346,7 @@ if prompt := st.chat_input('Ask about the IST courses...'):
     messages_to_send = [system_msg] + recent_history #Prepended AFTER slicing
 
     st.session_state.last_sources = sources
+    st.session_state.last_course_filter = codes
 
     try:
         stream = client.chat.completions.create(
@@ -285,4 +365,9 @@ if prompt := st.chat_input('Ask about the IST courses...'):
     st.session_state.messages.append({'role': 'assistant', 'content': response})
 
 if 'last_sources' in st.session_state: #Shows which files the RAG actually pulled
-    st.caption('Syllabi retrieved for the last question: ' + ', '.join(st.session_state.last_sources))
+    note = ''
+
+    if st.session_state.get('last_course_filter'):
+        note = ' (filtered to IST ' + ', '.join(st.session_state.last_course_filter) + ')'
+
+    st.caption('Syllabi retrieved for the last question: ' + ', '.join(st.session_state.last_sources) + note)
