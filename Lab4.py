@@ -28,7 +28,7 @@ DATA_SUBFOLDER = Path('data') / 'Lab04' #Repo folder holding the 7 syllabus PDFs
 #Set to True for ONE run to wipe and re-embed the collection, then set back to
 #False. Needed after changing what text gets embedded, because an already
 #populated collection is otherwise reused untouched.
-REBUILD_COLLECTION = True
+REBUILD_COLLECTION = False
 
 #text-embedding-3-small errors above 8,191 tokens. A full syllabus is embedded as
 #ONE document in Part A (no chunking yet), so long text is capped here at roughly
