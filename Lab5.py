@@ -1,3 +1,0 @@
-#DARREL RAMASRAY
-#IST 688 - Building HC-AI Apps
-#Lab05
