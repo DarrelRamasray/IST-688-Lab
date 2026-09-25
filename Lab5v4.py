@@ -187,86 +187,6 @@ def build_user_message(city, plans):
     return '\n'.join(lines)
 
 
-#### PART B, STEP 7: SECOND CALL PIECES ####
-ADVICE_PROMPT = f"""Using the weather results above, give today's advice in two parts.
-What to wear: specific clothing for the day, and when to add or remove layers based on the hourly timeline.
-Outdoor activities: two or three activities that suit the weather, with the best time of day for each.
-If the user shared plans, tailor both parts to those plans.
-Name the location using matched_location. If the City was blank and no place was named in the plans,
-say the advice is for {DEFAULT_LOCATION}, the default.
-You do not know the current local time, so cover the whole day rather than assuming the hour.
-If a weather lookup returned an error, say so plainly and do not guess the weather.
-Keep it concise."""
-
-
-def assistant_tool_request(reply): #The model's tool request as a plain dict, the same content as the lecture's to_dict()
-    return {
-        'role': 'assistant',
-        'content': reply.content,
-        'tool_calls': [
-            {'id': call.id,
-             'type': 'function',
-             'function': {'name': call.function.name, 'arguments': call.function.arguments}}
-            for call in reply.tool_calls
-        ]
-    }
-
-
-def run_tool_call(call): #Returns (text for the tool message, weather data or None). Always returns text,
-                         #because every tool request needs a matching tool message
-    if call.function.name != 'get_current_weather':
-        return json.dumps({'error': f'Unknown tool: {call.function.name}'}), None
-
-    try:
-        weather = run_weather_tool(call.function.arguments)
-        return json.dumps(weather), weather
-    except Exception as e: #The model is told about the failure instead of the app crashing
-        return json.dumps({'error': str(e)}), None
-
-
-#### PART B: WEATHER SNAPSHOT (shown above the advice) ####
-def _peak(slots, key): #Highest value in today's timeline, and the time it happens
-    values = [(slot[key], slot['time']) for slot in slots if slot.get(key) is not None]
-    return max(values, key=lambda pair: pair[0]) if values else (None, '')
-
-
-def _fmt(value, suffix=''): #A dash instead of 'None' when wttr.in leaves a value out
-    return '—' if value is None else f'{value:.0f}{suffix}'
-
-
-def show_weather_snapshot(weather, city_blank):
-    place = weather['matched_location'] or weather['location']
-
-    #Covers both halves of the default: Python filled it in, or the model sent Syracuse for a blank City
-    used_default = weather['used_default_location'] or (city_blank and weather['location'] == DEFAULT_LOCATION)
-    note = ' · default location, no city entered' if used_default else ''
-
-    st.markdown(f"**Weather for {place}**")
-    st.caption(f"{weather['description']}{note}")
-
-    today = weather['today']
-    slots = weather['hourly_today']
-
-    rain, rain_time = _peak(slots, 'chance_of_rain')
-    snow, snow_time = _peak(slots, 'chance_of_snow')
-
-    if snow is not None and (rain is None or snow > rain): #Syracuse winters: show snow when it is the bigger risk
-        precip_label, precip_value, precip_time = 'Snow chance', snow, snow_time
-    else:
-        precip_label, precip_value, precip_time = 'Rain chance', rain, rain_time
-
-    uv, uv_time = _peak(slots, 'uv_index')
-
-    cols = st.columns(5)
-    cols[0].metric('Now', _fmt(weather['temperature'], '°F'))
-    cols[1].metric('Feels like', _fmt(weather['feels_like'], '°F'))
-    cols[2].metric('High / Low', f"{_fmt(today['high'], '°')} / {_fmt(today['low'], '°')}")
-    cols[3].metric(precip_label, _fmt(precip_value, '%'),
-                   help=f"Highest chance in today's forecast, around {precip_time}" if precip_time else None)
-    cols[4].metric('UV index', _fmt(uv),
-                   help=f'Highest today, around {uv_time}' if uv_time else None)
-
-
 #### MAIN APP ####
 st.title(':blue[Lab 5:] :grey[What to Wear] Bot')
 
@@ -310,23 +230,20 @@ if add_plans: #The plans box only appears while the checkbox is ticked
                          placeholder='e.g., Walking tour of campus this afternoon, dinner outside at 7 PM',
                          max_chars=300) #Keeps the prompt short, since every character sent is billed
 
-#### PART B, STEPS 6-7: THE TWO CALLS ####
+#### PART B, STEP 6: FIRST CALL - THE MODEL DECIDES WHETHER IT NEEDS THE WEATHER ####
 if st.button('Get my advice', type='primary'):
-    client = st.session_state.openai_client
-
     messages = [
         {'role': 'system', 'content': TOOL_SYSTEM_PROMPT},
         {'role': 'user', 'content': build_user_message(city, plans)}
     ]
 
-    #Step 6: first call. The model decides whether it needs the weather
     try:
         with st.spinner('Reading your request...'):
-            response = client.chat.completions.create(
+            response = st.session_state.openai_client.chat.completions.create(
                 model=CHAT_MODEL,
                 messages=messages,
                 tools=[WEATHER_TOOL],
-                tool_choice='auto' #Step 6a
+                tool_choice='auto' #Step 6a: the model decides whether it needs the weather
             ) #Not streamed, because the app has to inspect the full reply for tool_calls
 
     except Exception as e:
@@ -335,46 +252,26 @@ if st.button('Get my advice', type='primary'):
 
     reply = response.choices[0].message
 
-    if not reply.tool_calls: #The model answered without asking for the weather
+    #Temporary check until Step 7: shows what the model asked for and what Python fetched
+    st.info(build_user_message(city, plans).replace('\n', '\n\n'))
+
+    if reply.tool_calls:
+        for call in reply.tool_calls: #The model can request more than one call in a single reply
+            st.write(f'**Model requested:** `{call.function.name}({call.function.arguments})`')
+
+            if call.function.name != 'get_current_weather':
+                st.warning(f'Unknown tool requested: {call.function.name}')
+                continue
+
+            try:
+                with st.spinner('Checking the weather...'):
+                    weather = run_weather_tool(call.function.arguments)
+
+                st.json(weather, expanded=False) #Collapsed, click to open
+
+            except Exception as e:
+                st.error(f'Weather lookup failed: {e}')
+
+    else:
+        st.write('**Model answered without the tool:**')
         st.write(reply.content)
-        st.stop()
-
-    #Step 7: the model's own tool request goes back into the conversation first...
-    messages.append(assistant_tool_request(reply))
-
-    #...then one 'tool' message per request, matched by its id (the slide also passes a name; the API only needs the id)
-    snapshots = {} #Keyed by place, so a repeated request for the same place shows one snapshot
-
-    with st.spinner('Checking the weather...'):
-        for call in reply.tool_calls:
-            content, weather = run_tool_call(call)
-
-            messages.append({
-                'role': 'tool',
-                'tool_call_id': call.id,
-                'content': content
-            })
-
-            if weather:
-                snapshots[weather['matched_location'] or weather['location']] = weather
-
-    for weather in snapshots.values():
-        show_weather_snapshot(weather, city_blank=not city.strip())
-
-    if snapshots:
-        st.divider()
-
-    messages.append({'role': 'system', 'content': ADVICE_PROMPT}) #Step 7b: ask for clothing and activities
-
-    #Step 7: second call. No tools this time, so the model has to answer with the weather it now has
-    try:
-        stream = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=messages,
-            stream=True
-        )
-
-        st.write_stream(stream) #Same streaming display as Lab 4
-
-    except Exception as e:
-        st.error(f'This request has failed: {e}')
