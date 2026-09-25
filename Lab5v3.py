@@ -4,13 +4,9 @@
 
 import streamlit as st
 import requests
-import json
 from urllib.parse import quote
-from openai import OpenAI
 
 WEATHER_CACHE_SECONDS = 1800 #30 minutes, weather for "today" does not need refetching more often
-DEFAULT_LOCATION = 'Syracuse, NY' #Part B, Step 6b
-CHAT_MODEL = 'gpt-5.4-mini' #Same model as Lab 4
 
 
 #### PART A, STEP 3: WEATHER DATA FUNCTION ####
@@ -72,13 +68,11 @@ def _format_hour(raw_time): #Hourly times come as '0', '300', ... '2100'
 # location can be a city, a zip code, an airport code ('SYR'),
 # or a landmark ('Eiffel+Tower')
 # note: hard codes units to degrees Fahrenheit
-def get_current_weather(location=None):
-    location = _clean_location(location or '')
+def get_current_weather(location):
+    location = _clean_location(location)
 
-    used_default = not location
-
-    if used_default:
-        location = DEFAULT_LOCATION #Part B, Step 6b: Python's half of the default
+    if not location:
+        raise Exception('No location was given') #The default location is decided in Part B
 
     data = _fetch_weather_json(location)
 
@@ -116,7 +110,6 @@ def get_current_weather(location=None):
     # two examples; note that some values are nested one level deeper
     return {'location': location,
             'matched_location': matched_location,
-            'used_default_location': used_default, #Lets the model tell the user no city was given
             'units': 'temperatures in F, wind in mph, precipitation in inches, humidity and chances in percent',
             'temperature': float(current['temp_F']),
             'description': current['weatherDesc'][0]['value'].strip(), #wttr.in sometimes adds a trailing space ('Overcast ')
@@ -136,62 +129,8 @@ def get_current_weather(location=None):
             }
 
 
-#### PART B, STEP 5b: THE TOOL THE MODEL READS ####
-#Same shape as the lecture's get_current_weather example. The model only sees this
-#description, never the Python code, so the wording is what guides its choices
-WEATHER_TOOL = {
-    'type': 'function',
-    'function': {
-        'name': 'get_current_weather',
-        'description': ("Get today's weather for a location: current conditions, today's high and low, "
-                        "sunrise and sunset, and a three-hour forecast timeline for the day. "
-                        f"If the user gives no location, use '{DEFAULT_LOCATION}'."), #Step 6b: the model's half of the default
-        'parameters': {
-            'type': 'object',
-            'properties': {
-                'location': {
-                    'type': 'string',
-                    'description': ("City and state or country, e.g. 'Syracuse, NY' or 'Lima, Peru'. "
-                                    f"Use '{DEFAULT_LOCATION}' if the user did not give one.")
-                }
-            }
-            #No 'required' list on purpose: if the model leaves location out, Python fills in the default
-        }
-    }
-}
-
-TOOL_SYSTEM_PROMPT = f"""You help people decide what to wear today and which outdoor activities suit the weather.
-Use the get_current_weather tool to get the weather you need before giving advice.
-Use the City the user gives. If the City is blank but their plans name a place, use that place.
-If no location is given anywhere, use '{DEFAULT_LOCATION}'."""
-
-
-def run_weather_tool(arguments_json): #Reads the model's arguments, which arrive as a JSON string
-    try:
-        args = json.loads(arguments_json or '{}')
-    except json.JSONDecodeError:
-        args = {}
-
-    if not isinstance(args, dict):
-        args = {}
-
-    return get_current_weather(args.get('location')) #A missing location falls through to the default
-
-
-def build_user_message(city, plans):
-    lines = [f'City: {city.strip() or "(blank)"}']
-
-    if plans.strip():
-        lines.append(f'Plans: {plans.strip()}')
-
-    return '\n'.join(lines)
-
-
 #### MAIN APP ####
 st.title(':blue[Lab 5:] :grey[What to Wear] Bot')
-
-if 'openai_client' not in st.session_state: #Same pattern as Lab 4
-    st.session_state.openai_client = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
 
 
 #### PART A, STEP 4: TEST BLOCK - COMMENTED OUT FOR PART B ####
@@ -230,48 +169,14 @@ if add_plans: #The plans box only appears while the checkbox is ticked
                          placeholder='e.g., Walking tour of campus this afternoon, dinner outside at 7 PM',
                          max_chars=300) #Keeps the prompt short, since every character sent is billed
 
-#### PART B, STEP 6: FIRST CALL - THE MODEL DECIDES WHETHER IT NEEDS THE WEATHER ####
 if st.button('Get my advice', type='primary'):
-    messages = [
-        {'role': 'system', 'content': TOOL_SYSTEM_PROMPT},
-        {'role': 'user', 'content': build_user_message(city, plans)}
-    ]
+    #Temporary check until Steps 6-7 add the OpenAI calls: shows exactly what the bot will receive
+    st.info(f'City: {city.strip() or "(blank)"}\n\nPlans: {plans.strip() or "(none)"}')
 
-    try:
-        with st.spinner('Reading your request...'):
-            response = st.session_state.openai_client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=messages,
-                tools=[WEATHER_TOOL],
-                tool_choice='auto' #Step 6a: the model decides whether it needs the weather
-            ) #Not streamed, because the app has to inspect the full reply for tool_calls
+    if city.strip():
+        try:
+            with st.spinner('Checking the weather...'):
+                st.json(get_current_weather(city), expanded=False) #Collapsed, click to open
 
-    except Exception as e:
-        st.error(f'This request has failed: {e}')
-        st.stop()
-
-    reply = response.choices[0].message
-
-    #Temporary check until Step 7: shows what the model asked for and what Python fetched
-    st.info(build_user_message(city, plans).replace('\n', '\n\n'))
-
-    if reply.tool_calls:
-        for call in reply.tool_calls: #The model can request more than one call in a single reply
-            st.write(f'**Model requested:** `{call.function.name}({call.function.arguments})`')
-
-            if call.function.name != 'get_current_weather':
-                st.warning(f'Unknown tool requested: {call.function.name}')
-                continue
-
-            try:
-                with st.spinner('Checking the weather...'):
-                    weather = run_weather_tool(call.function.arguments)
-
-                st.json(weather, expanded=False) #Collapsed, click to open
-
-            except Exception as e:
-                st.error(f'Weather lookup failed: {e}')
-
-    else:
-        st.write('**Model answered without the tool:**')
-        st.write(reply.content)
+        except Exception as e:
+            st.error(f'Weather lookup failed: {e}')
