@@ -6,3 +6,5 @@ pysqlite3-binary
 PyPDF2
 protobuf==3.20
 requests
+langchain
+langchain-openai
