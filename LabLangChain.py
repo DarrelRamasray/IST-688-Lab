@@ -273,7 +273,7 @@ def show_weather_snapshot(weather, city_blank):
                    help=f'Highest today, around {uv_time}' if uv_time else None)
 
 
-st.title(':blue[Lab 5:] :grey[What to Wear] Bot')
+st.title(':blue[Lab 6:] :grey[Modified Lab 5] What to Wear Bot')
 
 if 'openai_client' not in st.session_state: #Created once per session
     st.session_state.openai_client = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
@@ -351,3 +351,22 @@ if st.button('Get my advice', type='primary'):
 
     except Exception as e:
         st.error(f'This request has failed: {e}')
+
+
+"""
+PART D - LOOK INSIDE THE AGENT
+Run traced: City = "Syracuse, NY", read off the “Behind the scenes” expander.
+a. The agent's message list held 4 entries.
+1.	Me: "What should I wear in Syracuse, NY?", the question my code builds from the City box and hands to agent.invoke.
+2.	LLM: the model's first turn, with no words at all; it spent the turn asking to run get_weather_data.
+3.	Tool: the dictionary get_weather_data returned, converted to text so the model could read it.
+4.	LLM: the finished advice, written from the tool result in message 3 and shown in the chat bubble.
+
+b. The tool request. Message 2 has empty content because the request sits in .tool_calls, which holds the tool name, its arguments and a call id. Message 3 carries the same id, which is how the agent matches the result to its request
+
+c. How my earlier code created the same 4 messages by hand
+1.	Me: One list held the whole conversation: TOOL_SYSTEM_PROMPT as a system message, then the user message built by build_user_message. Unlike in the agent, the system prompt was a real message in the history.
+2.	LLM: The first create() call sent that list with WEATHER_TOOL, and the model replied with the tool request. My code stopped early if the reply had no tool calls, and otherwise appended it to the list using assistant_tool_request.
+3.	Tool: A loop ran each tool call through run_tool_call, which ran the weather function and turned the result into text with json.dumps. Each result was appended as a tool message whose tool_call_id pointed back to message 2.
+4.	LLM: A second create() call with no tools forced the model to answer, after ADVICE_PROMPT was added as an extra system message. The reply was streamed with st.write_stream and never saved to the list.
+"""
