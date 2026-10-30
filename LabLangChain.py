@@ -235,20 +235,27 @@ if st.button('Get my advice', type='primary'): #Step 7
             if message.type == "ai" and message.tool_calls:
                 st.write(message.tool_calls)
 
-"""
-PART D - LOOK INSIDE THE AGENT
-Run traced: City = "Syracuse, NY", read off the “Behind the scenes” expander.
-a. The agent's message list held 4 entries.
-1.	Me: "What should I wear in Syracuse, NY?", the question my code builds from the City box and hands to agent.invoke.
-2.	LLM: the model's first turn, with no words at all; it spent the turn asking to run get_weather_data.
-3.	Tool: the dictionary get_weather_data returned, converted to text so the model could read it.
-4.	LLM: the finished advice, written from the tool result in message 3 and shown in the chat bubble.
-
-b. The tool request. Message 2 has empty content because the request sits in .tool_calls, which holds the tool name, its arguments and a call id. Message 3 carries the same id, which is how the agent matches the result to its request
-
-c. How my earlier code created the same 4 messages by hand
-1.	Me: One list held the whole conversation: TOOL_SYSTEM_PROMPT as a system message, then the user message built by build_user_message. Unlike in the agent, the system prompt was a real message in the history.
-2.	LLM: The first create() call sent that list with WEATHER_TOOL, and the model replied with the tool request. My code stopped early if the reply had no tool calls, and otherwise appended it to the list using assistant_tool_request.
-3.	Tool: A loop ran each tool call through run_tool_call, which ran the weather function and turned the result into text with json.dumps. Each result was appended as a tool message whose tool_call_id pointed back to message 2.
-4.	LLM: A second create() call with no tools forced the model to answer, after ADVICE_PROMPT was added as an extra system message. The reply was streamed with st.write_stream and never saved to the list.
-"""
+#PART D - LOOK INSIDE THE AGENT
+#Run traced: City = "Syracuse, NY", read off the “Behind the scenes” expander.
+#a. The agent's message list held 4 entries.
+#   1. Me: "What should I wear in Syracuse, NY?", the question my code builds from the City box and hands to agent.invoke.
+#   2. LLM: the model's first turn, with no words at all; it spent the turn asking to run get_weather_data.
+#   3. Tool: the dictionary get_weather_data returned, converted to text so the model could read it.
+#   4. LLM: the finished advice, written from the tool result in message 3 and shown in the chat bubble.
+#
+#b. The tool request. Message 2 has empty content because the request sits in .tool_calls, which holds the tool name,
+#   its arguments and a call id. Message 3 carries the same id, which is how the agent matches the result to its request.
+#
+#c. How my earlier code (Lab5.py) created the same 4 messages by hand
+#   1. Me: One list held the whole conversation (lines 294-297): TOOL_SYSTEM_PROMPT as a system message, then the user
+#      message built by build_user_message (lines 175-181). Unlike in the agent, the system prompt was a real message
+#      in the history.
+#   2. LLM: The first create() call (lines 301-306) sent that list with WEATHER_TOOL, and the model replied with the tool
+#      request. My code stopped early if the reply had no tool calls (lines 314-316), and otherwise appended it to the
+#      list using assistant_tool_request (line 318, defined at lines 211-221).
+#   3. Tool: A loop (lines 323-330) ran each tool call through run_tool_call (lines 224-232), which ran the weather
+#      function and turned the result into text with json.dumps. Each result was appended as a tool message whose
+#      tool_call_id pointed back to message 2.
+#   4. LLM: A second create() call with no tools (lines 344-348) forced the model to answer, after ADVICE_PROMPT was
+#      added as an extra system message (line 341). The reply was streamed with st.write_stream (line 350) and never
+#      saved to the list.
