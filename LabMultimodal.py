@@ -109,8 +109,8 @@ question = st.text_area(
     "Ask a question about the upload (optional)",
     placeholder="Leave blank to get a summary only.",
     disabled=not upload,
-    key="lab8_question",
-)  #Step 5a: optional question, same disabled-until-upload pattern as Lab 2
+    key=f"lab8_question_{mode}",
+)  #Step 5a: optional question, same disabled-until-upload pattern as Lab 2; a separate key per mode clears it when you switch modes
 
 analyze = st.button("Analyze", type="primary")  #Step 5a: Analyze button
 
