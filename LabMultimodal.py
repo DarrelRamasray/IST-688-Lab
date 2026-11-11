@@ -29,4 +29,40 @@ def analyze_content(content, prompt):  #Step 3: sends content and instructions t
         max_output_tokens=600)
     return response.output_text
 
-st.title("Lab 8 - The See and Hear Assistant")  #Temporary title so the page shows something; Part B builds the rest
+st.title("Lab 8 - The See and Hear Assistant")  #Page title
+st.write(
+    "Choose Image or Audio in the sidebar, upload a file, optionally ask a question, then click Analyze. "
+)  #Step 5a: page description, same pattern as Lab 2
+
+mode = st.sidebar.radio("Input type", ["Image", "Audio"], key="lab8_mode")  #Step 5a: Image or Audio selector
+
+if mode == "Image":
+    file_types = ["png", "jpg", "jpeg"]  #Step 5b-i: allowed image formats
+    upload_label = "Upload an image (PNG, JPG, or JPEG, 5 MB max)"
+else:
+    file_types = ["mp3", "wav", "m4a"]  #Step 5b-i: allowed audio formats
+    upload_label = "Upload an audio clip (MP3, WAV, or M4A, 5 MB max, 60 seconds max)"
+
+upload = st.file_uploader(
+    upload_label,
+    type=file_types,
+    key=f"lab8_upload_{mode}",
+)  #Step 5a: file uploader; a separate key per mode clears the file when you switch modes
+
+if upload:
+    if mode == "Image":
+        st.image(upload, caption=upload.name)  #Step 5b: image preview
+    else:
+        st.audio(upload, format=upload.type)  #Step 5b: audio playback
+
+question = st.text_area(
+    "Ask a question about the upload (optional)",
+    placeholder="Leave blank to get a summary only.",
+    disabled=not upload,
+    key="lab8_question",
+)  #Step 5a: optional question, same disabled-until-upload pattern as Lab 2
+
+analyze = st.button("Analyze", type="primary")  #Step 5a: Analyze button
+
+if analyze:  #Temporary: Step 7 replaces this block
+    st.info("The Analyze button gets connected in Step 7.")
