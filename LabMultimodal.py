@@ -29,12 +29,19 @@ def analyze_content(content, prompt):  #Step 3: sends content and instructions t
         max_output_tokens=600)
     return response.output_text
 
+def preview_audio(upload):  #Step 5b: plays audio from a data URL instead of Streamlit's media server
+    formats = {".mp3": "audio/mpeg", ".wav": "audio/wav",
+               ".m4a": "audio/mp4"}
+    mime = formats[Path(upload.name).suffix.lower()]
+    encoded = base64.b64encode(upload.getvalue()).decode("utf-8")
+    st.audio(f"data:{mime};base64,{encoded}", format=mime)
+
 st.title("Lab 8 - The See and Hear Assistant")  #Page title
 st.write(
-    "Choose Image or Audio in the sidebar, upload a file, optionally ask a question, then click Analyze. "
+    "Choose Image or Audio, upload a file, optionally ask a question, then click Analyze. "
 )  #Step 5a: page description, same pattern as Lab 2
 
-mode = st.sidebar.radio("Input type", ["Image", "Audio"], key="lab8_mode")  #Step 5a: Image or Audio selector
+mode = st.radio("Input type", ["Image", "Audio"], horizontal=True, key="lab8_mode")  #Step 5a: Image or Audio selector
 
 if mode == "Image":
     file_types = ["png", "jpg", "jpeg"]  #Step 5b-i: allowed image formats
@@ -51,9 +58,9 @@ upload = st.file_uploader(
 
 if upload:
     if mode == "Image":
-        st.image(upload, caption=upload.name)  #Step 5b: image preview
+        st.image(prepare_image(upload)["image_url"], caption=upload.name)  #Step 5b: image preview from a data URL
     else:
-        st.audio(upload, format=upload.type)  #Step 5b: audio playback
+        preview_audio(upload)  #Step 5b: audio playback from a data URL
 
 question = st.text_area(
     "Ask a question about the upload (optional)",
