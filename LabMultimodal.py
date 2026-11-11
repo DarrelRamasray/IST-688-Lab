@@ -175,3 +175,16 @@ if result:
         with st.expander("Transcript"):  #Step 7b: transcript in an expandable section
             st.write(result["transcript"].replace("$", "\\$"))  #Escapes dollar signs so Streamlit doesn't treat them as math formatting
     st.markdown((result["text"] or "The model returned an empty response. Please try again.").replace("$", "\\$"))  #Step 7c: display the returned text; escapes dollar signs so Streamlit doesn't treat them as math formatting
+
+
+#Step 9: Reflection
+#9a. An image travels as a base64 data URL inside an input_image block, sent with the question in the Responses API call, so the model reads the pixels itself.
+#    Audio needs a separate first call to the transcription endpoint; the model receives the returned text with the question in a single input_text block.
+#
+#9b. Revising the chart rule made the model flag the Oct 15 price as "not labeled, estimated from the graph" instead of stating it as fact, while the printed peak and low stayed exact. 
+#    The estimate still drifted between runs ($67,000-$67,500 vs. an actual $66,900), so the reporting improved but the chart reading did not.
+#    When asked for an oven temperature the cheesecake recipe audio never mentioned, the app stated so rather than inventing one.
+#
+#9c. Transcription keeps the words but drops tone, pauses, emphasis, speaker identity, and background sound (as expected).
+#    My audio's "foamy and bubbly like this" also points at something only visible on screen, and its cut-off ending came back differently across runs.
+#    Video would require sampling frames as images, transcribing the audio track, and syncing the two by timestamp, at a much higher token cost.
