@@ -144,5 +144,5 @@ if result:
     st.caption(f"Result for {result['file_name']} | Question: {result['question'] or 'none (summary only)'}")
     if result["transcript"] is not None:
         with st.expander("Transcript"):  #Step 7b: transcript in an expandable section
-            st.write(result["transcript"])
-    st.markdown(result["text"] or "The model returned an empty response. Please try again.")  #Step 7c: display the returned text
+            st.write(result["transcript"].replace("$", "\\$"))  #Escapes dollar signs so Streamlit doesn't treat them as math formatting
+    st.markdown((result["text"] or "The model returned an empty response. Please try again.").replace("$", "\\$"))  #Step 7c: display the returned text; escapes dollar signs so Streamlit doesn't treat them as math formatting
