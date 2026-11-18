@@ -10,8 +10,9 @@ lab3_page = st.Page("Lab3.py", title="Lab 3", icon=":material/description:")
 lab4_page = st.Page("Lab4.py", title="Lab 4", icon=":material/description:")
 lab5_page = st.Page("Lab5.py", title="Lab 5", icon=":material/description:")
 lab6_page = st.Page("LabLangChain.py", title="Lab 6", icon=":material/description:")
-lab8_page = st.Page("LabMultimodal.py", title="Lab 8", icon=":material/description:", default=True)  #Default page
+lab8_page = st.Page("LabMultimodal.py", title="Lab 8", icon=":material/description:")
+lab9_page = st.Page("Lab9.py", title="Lab 9", icon=":material/description:", default=True)  #Default page
 
-pg = st.navigation([lab8_page,lab6_page,lab5_page,lab4_page,lab3_page,lab2_page, lab1_page])  #Lab8 listed first so it appears at the top of the sidebar
+pg = st.navigation([lab9_page,lab8_page,lab6_page,lab5_page,lab4_page,lab3_page,lab2_page, lab1_page])  #Lab9 listed first so it appears at the top of the sidebar
 st.set_page_config(page_title="Lab Application", page_icon=":material/edit:")
 pg.run()
