@@ -3,6 +3,7 @@
 
 # ChromaDB (generated at runtime, not source)
 ChromaDB_for_Lab/
+lab9_memory_db/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
