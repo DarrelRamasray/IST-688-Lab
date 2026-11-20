@@ -172,16 +172,19 @@ def save_memory(collection, user_id: str, text: str) -> str:
 # Part C: READ - pull back this user's most relevant memories
 # =====================================================================
 def recall_memories(collection, user_id: str, query: str, k: int = RECALL_K):
-    # TODO Part C: return up to k of THIS user's memories that best match the query, as a list of
-    # dicts like {"text": ..., "type": ..., "date": ...}.
-    #   1. if collection.count() == 0, return []
-    #   2. results = collection.query(query_texts=[query], n_results=k, where={"user_id": user_id})
-    #      the where= filter runs BEFORE the similarity search. this one argument is what stops
-    #      one user's memories leaking into another user's prompt.
-    #   3. loop over zip(results["documents"][0], results["metadatas"][0]) and build the list
-    # stretch (expiry): only keep memories newer than MEMORY_DAYS using
-    #   {"$and": [{"user_id": user_id}, {"timestamp": {"$gte": cutoff}}]}
-    return []   # <- replace this line
+    # Part C: return up to k of THIS user's memories that best match the query
+    where = {"user_id": user_id}   # the important line: only this user's memories, filtered BEFORE the similarity search
+    if MEMORY_DAYS:   # stretch (expiry): also ignore memories older than MEMORY_DAYS (off while MEMORY_DAYS = 0)
+        cutoff = time.time() - MEMORY_DAYS * 24 * 3600
+        where = {"$and": [{"user_id": user_id}, {"timestamp": {"$gte": cutoff}}]}
+    if collection.count() == 0:
+        return []   # empty store, nothing to search
+    results = collection.query(query_texts=[query], n_results=k, where=where)
+    memories = []
+    for text, meta in zip(results["documents"][0], results["metadatas"][0]):
+        meta = meta or {}
+        memories.append({"text": text, "type": meta.get("type", "fact"), "date": meta.get("date", "")})
+    return memories
 
 
 def forget_user(collection, user_id: str) -> bool:
@@ -223,6 +226,8 @@ with st.sidebar:
 if not user_id:
     st.info("Type your name in the sidebar to start chatting.")
     st.stop()
+
+st.write(recall_memories(collection, user_id, "how should you answer me"))   # TEMPORARY Part C test - removed in Part D
 
 # if someone switches to a different user id, start a fresh chat so the Lab 3 buffer
 # doesn't carry the last person's conversation into the new person's prompt
