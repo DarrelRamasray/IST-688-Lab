@@ -1,7 +1,7 @@
 #DARREL RAMASRAY
 #IST 688 - Building HC-AI Apps
 #Lab09
-#Chatbot with Long-Term Memory: Parts A-D plus stretch goals 12 (forget me) and 13 (30-day expiry)
+#Chatbot with Long-Term Memory
 
 #Streamlit Cloud fix: swap in pysqlite3 before chromadb is imported (skipped where it isn't installed)
 try:
