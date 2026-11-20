@@ -132,13 +132,14 @@ collection = st.session_state.Lab9_MemoryDB
 # Part B: WRITE - decide what is worth remembering, then save it
 # =====================================================================
 def should_remember(text: str) -> bool:
-    # TODO Part B, step 4: return True only for statements about the user worth keeping.
-    #   1. clean = text.strip().lower()
-    #   2. return False if it has fewer than MIN_WORDS words  ("ok thanks", "hi")
-    #   3. return False if it ends with "?"                    (a question is not a fact)
-    #   4. return True if any phrase in ABOUT_ME_PHRASES appears in it, else False
-    #   hint: check " " + phrase inside " " + clean + " " so "my " does not match "army "
-    return False   # <- replace this line
+    # Part B, step 4: the write filter. True only for statements about the user worth keeping
+    clean = text.strip().lower()
+    if len(clean.split()) < MIN_WORDS:
+        return False   # small talk such as "ok thanks" or "hi there"
+    if clean.endswith("?"):
+        return False   # a question is not a fact about the user
+    padded = " " + clean + " "   # a space on each end so "my " matches "my dog" but not "army"
+    return any(" " + phrase in padded for phrase in ABOUT_ME_PHRASES)
 
 
 def memory_type(text: str) -> str:
@@ -150,16 +151,20 @@ def memory_type(text: str) -> str:
 
 
 def save_memory(collection, user_id: str, text: str) -> str:
-    # TODO Part B, step 5: save ONE memory into the collection and return its id.
+    # Part B, step 5: save ONE memory into the collection and return its id
     text = text.strip()
     # same user + same sentence -> same id, so upsert overwrites instead of making duplicates
     memory_id = user_id + "-" + hashlib.sha1(text.lower().encode()).hexdigest()[:10]
-    # call collection.upsert(ids=[...], documents=[...], metadatas=[{...}]) where the metadata has:
-    #   "user_id":   user_id                                  (needed for the Part C filter!)
-    #   "timestamp": time.time()                              (a number, used by the expiry stretch)
-    #   "date":      datetime.now().strftime("%Y-%m-%d")      (readable date for the prompt)
-    #   "type":      memory_type(text)                        ("preference" or "fact")
-    # ... your code here ...
+    collection.upsert(
+        ids=[memory_id],
+        documents=[text],   # chroma turns this text into an embedding itself (text-embedding-3-small)
+        metadatas=[{
+            "user_id": user_id,                            # needed for the Part C filter!
+            "timestamp": time.time(),                      # a number, used by the expiry stretch
+            "date": datetime.now().strftime("%Y-%m-%d"),   # readable date for the prompt
+            "type": memory_type(text),                     # "preference" or "fact"
+        }],
+    )
     return memory_id
 
 
